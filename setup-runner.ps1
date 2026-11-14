@@ -1,14 +1,15 @@
 # Nova Player: installs a GitHub Actions runner on this PC so Android builds run here for free.
 # Usage: setup-runner.ps1 -Token <registration token from the repo's "New self-hosted runner" page>
 # Nothing secret is stored in this file. Remove later: delete the folder and the runner in GitHub settings.
-param([Parameter(Mandatory = $true)][string]$Token)
+param([Parameter(Mandatory = $true)][string]$Token, [string]$Dir = '')
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-# GitHub recommends C:\actions-runner on Windows (short paths for the Android build).
-$dir = 'C:\actions-runner'
+# Short path at the root of a drive (GitHub's advice for Windows). Default: D: when it exists.
+if ($Dir) { $dir = $Dir } elseif (Test-Path 'D:\') { $dir = 'D:\actions-runner' } else { $dir = 'C:\actions-runner' }
 try { New-Item -ItemType Directory -Force -Path $dir | Out-Null } catch { $dir = Join-Path $HOME 'actions-runner' }
+$drive = $dir.Substring(0,1)
 Write-Host "== Nova Player build runner -> $dir" -ForegroundColor Cyan
-$free = [math]::Round((Get-PSDrive C).Free / 1GB, 1)
+$free = [math]::Round((Get-PSDrive $drive).Free / 1GB, 1)
 Write-Host "Free disk space: $free GB (about 6 GB needed)"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Location $dir
@@ -25,6 +26,13 @@ if (-not (Test-Path (Join-Path $dir 'config.cmd'))) {
 Write-Host "Registering this PC with the nova-player repository ..."
 & .\config.cmd --unattended --url 'https://github.com/arnosaville77-wq/nova-player' --token $Token --name "nova-pc-$env:COMPUTERNAME" --labels nova --work '_work' --replace
 if ($LASTEXITCODE -ne 0) { throw "Runner registration failed (token expired? get a new one)" }
+# Keep the big downloads (Gradle cache, Android SDK) on the same drive as the runner.
+@(
+  "GRADLE_USER_HOME=$dir\gradle-home",
+  "ANDROID_HOME=$dir\android-sdk",
+  "ANDROID_SDK_ROOT=$dir\android-sdk",
+  "ANDROID_USER_HOME=$HOME\.android"
+) | Set-Content -Encoding ascii (Join-Path $dir '.env')
 # Start with Windows (minimized), and start now.
 $startup = [Environment]::GetFolderPath('Startup')
 $ws = New-Object -ComObject WScript.Shell
