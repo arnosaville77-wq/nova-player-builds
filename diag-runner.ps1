@@ -10,6 +10,11 @@ Get-ChildItem env: | Where-Object { $_.Name -match 'proxy' } | Format-Table -Aut
 Write-Host "== .NET versions / TLS:" -ForegroundColor Cyan
 [Net.ServicePointManager]::SecurityProtocol
 if ($Token) {
+  Write-Host "== Registration test with curl.exe:" -ForegroundColor Cyan
+  $body = '{"url":"https://github.com/arnosaville77-wq/nova-player","runner_event":"register"}'
+  $tmp = Join-Path $env:TEMP 'nb.json'; Set-Content -Encoding ascii $tmp $body
+  $code = & curl.exe -s -o NUL -w "%{http_code}" -X POST -H "Authorization: RemoteAuth $Token" -H "Content-Type: application/json" --data-binary "@$tmp" https://api.github.com/actions/runner-registration
+  if ($code -eq '200') { Write-Host "curl OK 200" -ForegroundColor Green } else { Write-Host "curl FAILED $code" -ForegroundColor Red }
   Write-Host "== Registration test from PowerShell:" -ForegroundColor Cyan
   try {
     $r = Invoke-WebRequest -UseBasicParsing -Method Post -Uri 'https://api.github.com/actions/runner-registration' `
