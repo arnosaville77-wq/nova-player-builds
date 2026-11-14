@@ -4,15 +4,17 @@
 param([Parameter(Mandatory = $true)][string]$Token)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-$dir = Join-Path $HOME 'actions-runner'
+# GitHub recommends C:\actions-runner on Windows (short paths for the Android build).
+$dir = 'C:\actions-runner'
+try { New-Item -ItemType Directory -Force -Path $dir | Out-Null } catch { $dir = Join-Path $HOME 'actions-runner' }
 Write-Host "== Nova Player build runner -> $dir" -ForegroundColor Cyan
-$free = [math]::Round((Get-PSDrive ($HOME.Substring(0,1))).Free / 1GB, 1)
+$free = [math]::Round((Get-PSDrive C).Free / 1GB, 1)
 Write-Host "Free disk space: $free GB (about 6 GB needed)"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Location $dir
 if (-not (Test-Path (Join-Path $dir 'config.cmd'))) {
-  $rel = Invoke-RestMethod 'https://api.github.com/repos/actions/runner/releases/latest'
-  $ver = $rel.tag_name.TrimStart('v')
+  $ver = '2.338.2'
+  try { $ver = (Invoke-RestMethod 'https://api.github.com/repos/actions/runner/releases/latest').tag_name.TrimStart('v') } catch {}
   $zip = "actions-runner-win-x64-$ver.zip"
   Write-Host "Downloading runner $ver ..."
   Invoke-WebRequest "https://github.com/actions/runner/releases/download/v$ver/$zip" -OutFile $zip
@@ -35,3 +37,4 @@ Start-Process -FilePath (Join-Path $dir 'run.cmd') -WorkingDirectory $dir -Windo
 Write-Host ""
 Write-Host "Done. The runner is running (minimized window 'run.cmd') and starts with Windows." -ForegroundColor Green
 Write-Host "Keep the PC on while a build runs. You can close this window."
+Read-Host "Press Enter to close"
