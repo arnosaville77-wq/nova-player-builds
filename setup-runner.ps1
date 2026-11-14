@@ -25,6 +25,8 @@ if (-not (Test-Path (Join-Path $dir 'config.cmd'))) {
   [System.IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $dir $zip), $dir)
   Remove-Item $zip
 }
+ipconfig /flushdns | Out-Null
+try { Write-Host ("api.github.com -> " + (([Net.Dns]::GetHostAddresses('api.github.com') | ForEach-Object { $_.IPAddressToString }) -join ', ')) } catch { }
 Write-Host "Registering this PC with the nova-player repository ..."
 & .\config.cmd --unattended --url 'https://github.com/arnosaville77-wq/nova-player' --token $Token --name "nova-pc-$env:COMPUTERNAME" --labels nova --work '_work' --replace
 if ($LASTEXITCODE -ne 0) { throw "Runner registration failed (token expired? get a new one)" }
