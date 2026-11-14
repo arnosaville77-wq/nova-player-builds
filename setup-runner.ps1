@@ -9,7 +9,7 @@ if ($Dir) { $dir = $Dir } elseif (Test-Path 'D:\') { $dir = 'D:\actions-runner' 
 try { New-Item -ItemType Directory -Force -Path $dir | Out-Null } catch { $dir = Join-Path $HOME 'actions-runner' }
 $drive = $dir.Substring(0,1)
 Write-Host "== Nova Player build runner -> $dir" -ForegroundColor Cyan
-$free = [math]::Round((Get-PSDrive $drive).Free / 1GB, 1)
+$free = [math]::Round((Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($drive):'").FreeSpace / 1GB, 1)
 Write-Host "Free disk space: $free GB (about 6 GB needed)"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Location $dir
@@ -18,8 +18,11 @@ if (-not (Test-Path (Join-Path $dir 'config.cmd'))) {
   try { $ver = (Invoke-RestMethod 'https://api.github.com/repos/actions/runner/releases/latest').tag_name.TrimStart('v') } catch {}
   $zip = "actions-runner-win-x64-$ver.zip"
   Write-Host "Downloading runner $ver ..."
-  Invoke-WebRequest "https://github.com/actions/runner/releases/download/v$ver/$zip" -OutFile $zip
+  # curl.exe (built into Windows 10/11) is much faster than Invoke-WebRequest and shows progress.
+  & curl.exe -L --fail --retry 3 -o $zip "https://github.com/actions/runner/releases/download/v$ver/$zip"
+  if ($LASTEXITCODE -ne 0) { throw "Download failed" }
   Add-Type -AssemblyName System.IO.Compression.FileSystem
+  Write-Host "Unpacking ..."
   [System.IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $dir $zip), $dir)
   Remove-Item $zip
 }
