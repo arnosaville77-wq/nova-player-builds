@@ -9,8 +9,7 @@ if ($Dir) { $dir = $Dir } elseif (Test-Path 'D:\') { $dir = 'D:\actions-runner' 
 try { New-Item -ItemType Directory -Force -Path $dir | Out-Null } catch { $dir = Join-Path $HOME 'actions-runner' }
 $drive = $dir.Substring(0,1)
 Write-Host "== Nova Player build runner -> $dir" -ForegroundColor Cyan
-$free = [math]::Round((Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($drive):'").FreeSpace / 1GB, 1)
-Write-Host "Free disk space: $free GB (about 6 GB needed)"
+try { $free = [math]::Round(([IO.DriveInfo]"$($drive):").AvailableFreeSpace / 1GB, 1); Write-Host "Free disk space on $($drive): $free GB (about 6 GB needed)" } catch { }
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Location $dir
 if (-not (Test-Path (Join-Path $dir 'config.cmd'))) {
